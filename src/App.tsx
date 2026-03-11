@@ -1,34 +1,21 @@
-import {
-  Flex,
-  Provider as MosaicProvider,
-  useIconStore,
-} from "@stoplight/mosaic";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { ApiReferenceReact } from "@scalar/api-reference-react";
+import "@scalar/api-reference-react/style.css";
 
-import { DemoNavbar } from "./components/Navbar";
-import { ElementsAPI } from "./components/ElementsAPI";
-import { GlobalContext, type Release } from "./context";
+import { getSchemaUrl } from "./utils";
+
+type Release = {
+  tag_name: string;
+  created_at: Date;
+};
 
 const RELEASES_URL =
   "https://api.github.com/repos/smartorderua/contracts/releases";
 
-export function App() {
+function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [releases, setReleases] = useState<Release[]>([]);
-
-  const [releaseTag, setReleaseTag] = useState("");
-
-  const setDefaultStyle = useIconStore((state) => state.setDefaultStyle);
-
-  React.useEffect(() => {
-    setDefaultStyle("fal");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    console.log({ releaseTag });
-  }, [releaseTag]);
 
   useEffect(() => {
     fetch(RELEASES_URL)
@@ -39,11 +26,6 @@ export function App() {
           created_at: new Date(release.created_at),
         }));
 
-        setReleaseTag(
-          releases.sort(
-            (a, b) => b.created_at.getTime() - a.created_at.getTime(),
-          )[0].tag_name,
-        );
         setReleases(releases);
         setLoading(false);
       })
@@ -64,19 +46,34 @@ export function App() {
   }
 
   return (
-    <MosaicProvider>
-      <GlobalContext.Provider
-        value={{
-          releases,
-          releaseTag,
-          setReleaseTag,
-        }}
-      >
-        <Flex direction="col" bg="canvas" h="screen">
-          <DemoNavbar />
-          <ElementsAPI />
-        </Flex>
-      </GlobalContext.Provider>
-    </MosaicProvider>
+    <ApiReferenceReact
+      configuration={{
+        sources: releases.map((release) => ({
+          title: `${
+            release.tag_name
+          } (${release.created_at.toLocaleDateString()})`,
+          url: new URL(
+            `https://cors-anywhere.com/${getSchemaUrl(release.tag_name)}`,
+          ).toString(),
+          agent: { disabled: true },
+        })),
+
+        authentication: {
+          preferredSecurityScheme: "BearerAuth",
+        },
+        servers: [
+          {
+            url: "https://api.novaorder.tech",
+            description: "Production server",
+          },
+        ],
+        layout: "modern",
+        hideModels: false,
+        baseServerURL: "https://api.novaorder.tech",
+        showOperationId: true,
+      }}
+    />
   );
 }
+
+export default App;
